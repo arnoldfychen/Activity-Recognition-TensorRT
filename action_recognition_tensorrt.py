@@ -9,10 +9,10 @@ import cv2
 import time
 
 from opts import parse_arguments
-
 EXPLICIT_BATCH = 1 << (int)(trt.NetworkDefinitionCreationFlag.EXPLICIT_BATCH)
 
-CLASSES = open('action_recognition_kinetics.txt').read().strip().split("\n")
+#CLASSES = open('action_recognition_kinetics.txt').read().strip().split("\n")
+CLASSES = open('action_recognition_kinetics_moments.txt').read().strip().split("\n")
 
 DURATION = 16
 INPUT_SIZE = 112
@@ -38,7 +38,7 @@ class TensorRTInference:
 
         precision = 'fp32'
         if fp16:
-                precision = 'fp16'
+            precision = 'fp16'
 
         def build_engine():
 
@@ -56,7 +56,6 @@ class TensorRTInference:
 
             # parse ONNX
             with open(onnx_file_path, 'rb') as model:
-                print('Beginning ONNX file parsing')
                 if not parser.parse(model.read()):
                     print('[Engine] ERROR: Failed to parse ONNX file')
                     for error in range(parser.num_errors):
@@ -139,9 +138,9 @@ class TensorRTInference:
         self.stream = cuda.Stream()
 
 if __name__ == '__main__':
-
+    print("main")
     opt = parse_arguments()
-
+    print("arguments parsed")
     if opt.stream == '':
         print('[Error] Please provide a valid path --stream.')
         sys.exit(0)
@@ -154,6 +153,7 @@ if __name__ == '__main__':
     ONNX_FILE_PATH = opt.model
     ENGINE_FILE_PATH = ONNX_FILE_PATH + '_b{}_{}.engine'
 
+    print("file paths:",ONNX_FILE_PATH, ENGINE_FILE_PATH)
     trt_inference = TensorRTInference(ONNX_FILE_PATH, ENGINE_FILE_PATH,
                           1<<30, 1, opt.fp16)
 
@@ -163,21 +163,24 @@ if __name__ == '__main__':
     skip = 0
     result = ''
     inferencetime = 0
-
+    print("camera opened")
     while True:
         ret, frame = source.read()
 
         if not ret:
             break
-
+        frame = cv2.resize(frame, (1920, 1080))
         skip += 1
         if skip % opt.frameskip == 0:
             skip = 0
             frames.append(frame)
 
             if not len(frames) < DURATION:
-                blob = cv2.dnn.blobFromImages(frames, 1.0,
-                    (INPUT_SIZE, INPUT_SIZE), (114.7748, 107.7354, 99.4750),
+                #blob = cv2.dnn.blobFromImages(frames, 1.0,
+                #    (INPUT_SIZE, INPUT_SIZE), (114.7748, 107.7354, 99.4750),
+                blob = cv2.dnn.blobFromImages(frames, 1.0/255,
+                    (INPUT_SIZE, INPUT_SIZE), (110.79, 103.3, 96.26),
+                    
                     swapRB=True, crop=True)
                 blob = np.transpose(blob, (1, 0, 2, 3))
                 blob = np.expand_dims(blob, axis=0)
